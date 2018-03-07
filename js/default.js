@@ -1,5 +1,5 @@
-var defaultTitle = 'This is ZenPen';
-var defaultContent = 
+var defaultTitle = 'This is ZenPen'
+var defaultContent =
 '<p>\
 A minimalist writing zone, where you can block out all distractions and get to what\'s important. The writing!  \
 </p>\
@@ -15,4 +15,4 @@ A minimalist writing zone, where you can block out all distractions and get to w
 <p>\
 	For <i>questions</i> and <b>open source info</b>, Click that little question mark at the bottom left of the screen.\
 </p>\
-<p>Happy Typing! ~ <b>Tim Holman (@twholman)</b></p>';
+<p>Happy Typing! ~ <b>Tim Holman (@twholman)</b></p>'

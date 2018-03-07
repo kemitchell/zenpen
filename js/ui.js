@@ -1,376 +1,346 @@
+/* globals localStorage, screenfull, Blob, saveAs, Node */
 // ui functions
-ZenPen = window.ZenPen || {};
-ZenPen.ui = (function() {
+var ZenPen = window.ZenPen || {}
+ZenPen.ui = (function () {
+  // Base elements
+  var article, saveModal, overlay, aboutButton, descriptionModal, header
 
-	// Base elements
-	var body, article, uiContainer, overlay, aboutButton, descriptionModal, header;
+  // Buttons
+  var screenSizeElement, colorLayoutElement, targetElement, saveElement
 
-	// Buttons
-	var screenSizeElement, colorLayoutElement, targetElement, saveElement;
+  // Word Counter
+  var wordCountValue, wordCountBox, wordCountElement, wordCounter, wordCounterProgress
 
-	// Word Counter
-	var wordCountValue, wordCountBox, wordCountElement, wordCounter, wordCounterProgress;
-	
-	//save support
-	var supportsSave, saveFormat, textToWrite;
-	
-	var expandScreenIcon = '&#xe000;';
-	var shrinkScreenIcon = '&#xe004;';
+  // save support
+  var supportsSave, saveFormat, textToWrite
 
-	var darkLayout = false;
+  var expandScreenIcon = '&#xe000;'
+  var shrinkScreenIcon = '&#xe004;'
 
-	function init() {
-		
-		supportsSave = !!new Blob()?true:false;
-		
-		bindElements();
+  var darkLayout = false
 
-		wordCountActive = false;
+  function init () {
+    supportsSave = !!new Blob()
 
-		if ( ZenPen.util.supportsHtmlStorage() ) {
-			loadState();
-		}
-		
-		console.log( "Checkin under the hood eh? We've probably got a lot in common. You should totally check out ZenPen on github! (https://github.com/tholman/zenpen)." );
-	}
+    bindElements()
 
-	function loadState() {
+    if (ZenPen.util.supportsHtmlStorage()) {
+      loadState()
+    }
 
-		// Activate word counter
-		if ( localStorage['wordCount'] && localStorage['wordCount'] !== "0") {			
-			wordCountValue = parseInt(localStorage['wordCount']);
-			wordCountElement.value = localStorage['wordCount'];
-			wordCounter.className = "word-counter active";
-			updateWordCount();
-		}
+    console.log("Checkin under the hood eh? We've probably got a lot in common. You should totally check out ZenPen on github! (https://github.com/tholman/zenpen).")
+  }
 
-		// Activate color switch
-		if ( localStorage['darkLayout'] === 'true' ) {
-			if ( darkLayout === false ) {
-				document.body.className = 'yang';
-			} else {
-				document.body.className = 'yin';
-			}
-			darkLayout = !darkLayout;
-		}
+  function loadState () {
+    // Activate word counter
+    if (localStorage['wordCount'] && localStorage['wordCount'] !== '0') {
+      wordCountValue = parseInt(localStorage['wordCount'])
+      wordCountElement.value = localStorage['wordCount']
+      wordCounter.className = 'word-counter active'
+      updateWordCount()
+    }
 
-	}
+    // Activate color switch
+    if (localStorage['darkLayout'] === 'true') {
+      if (darkLayout === false) {
+        document.body.className = 'yang'
+      } else {
+        document.body.className = 'yin'
+      }
+      darkLayout = !darkLayout
+    }
+  }
 
-	function saveState() {
+  function saveState () {
+    if (ZenPen.util.supportsHtmlStorage()) {
+      localStorage['darkLayout'] = darkLayout
+      localStorage['wordCount'] = wordCountElement.value
+    }
+  }
 
-		if ( ZenPen.util.supportsHtmlStorage() ) {
-			localStorage[ 'darkLayout' ] = darkLayout;
-			localStorage[ 'wordCount' ] = wordCountElement.value;
-		}
-	}
+  function bindElements () {
+    // UI element for color flip
+    colorLayoutElement = document.querySelector('.color-flip')
+    colorLayoutElement.onclick = onColorLayoutClick
 
-	function bindElements() {
+    // UI element for full screen
+    screenSizeElement = document.querySelector('.fullscreen')
+    screenSizeElement.onclick = onScreenSizeClick
 
-		// Body element for light/dark styles
-		body = document.body;
+    targetElement = document.querySelector('.target ')
+    targetElement.onclick = onTargetClick
 
-		uiContainer = document.querySelector( '.ui' );
+    // init event listeners only if browser can save
+    if (supportsSave) {
+      saveElement = document.querySelector('.save')
+      saveElement.onclick = onSaveClick
 
-		// UI element for color flip
-		colorLayoutElement = document.querySelector( '.color-flip' );
-		colorLayoutElement.onclick = onColorLayoutClick;
+      var formatSelectors = document.querySelectorAll('.saveselection span')
+      for (var i in formatSelectors) {
+        formatSelectors[i].onclick = selectFormat
+      }
 
-		// UI element for full screen		
-		screenSizeElement = document.querySelector( '.fullscreen' );
-		screenSizeElement.onclick = onScreenSizeClick;
+      document.querySelector('.savebutton').onclick = saveText
+    } else {
+      document.querySelector('.save.useicons').style.display = 'none'
+    }
 
-		targetElement = document.querySelector( '.target ');
-		targetElement.onclick = onTargetClick;
-		
-		//init event listeners only if browser can save
-		if (supportsSave) {
+    // Overlay when modals are active
+    overlay = document.querySelector('.overlay')
+    overlay.onclick = onOverlayClick
 
-			saveElement = document.querySelector( '.save' );
-			saveElement.onclick = onSaveClick;
-			
-			var formatSelectors = document.querySelectorAll( '.saveselection span' );
-			for( var i in formatSelectors ) {
-				formatSelectors[i].onclick = selectFormat;
-			}
-			
-			document.querySelector('.savebutton').onclick = saveText;
-		} else {
-			document.querySelector('.save.useicons').style.display = "none";
-		}
+    article = document.querySelector('.content')
+    article.onkeyup = onArticleKeyUp
 
-		// Overlay when modals are active
-		overlay = document.querySelector( '.overlay' );
-		overlay.onclick = onOverlayClick;
+    wordCountBox = overlay.querySelector('.wordcount')
+    wordCountElement = wordCountBox.querySelector('input')
+    wordCountElement.onchange = onWordCountChange
+    wordCountElement.onkeyup = onWordCountKeyUp
 
-		article = document.querySelector( '.content' );
-		article.onkeyup = onArticleKeyUp;
+    descriptionModal = overlay.querySelector('.description')
 
-		wordCountBox = overlay.querySelector( '.wordcount' );
-		wordCountElement = wordCountBox.querySelector( 'input' );
-		wordCountElement.onchange = onWordCountChange;
-		wordCountElement.onkeyup = onWordCountKeyUp;
+    saveModal = overlay.querySelector('.saveoverlay')
 
-		descriptionModal = overlay.querySelector( '.description' );
-		
-		saveModal = overlay.querySelector('.saveoverlay');
+    wordCounter = document.querySelector('.word-counter')
+    wordCounterProgress = wordCounter.querySelector('.progress')
 
-		wordCounter = document.querySelector( '.word-counter' );
-		wordCounterProgress = wordCounter.querySelector( '.progress' );
+    aboutButton = document.querySelector('.about')
+    aboutButton.onclick = onAboutButtonClick
 
-		aboutButton = document.querySelector( '.about' );
-		aboutButton.onclick = onAboutButtonClick;
+    header = document.querySelector('.header')
+    header.onkeypress = onHeaderKeyPress
+  }
 
-		header = document.querySelector( '.header' );
-		header.onkeypress = onHeaderKeyPress;
-	}
+  function onScreenSizeClick (event) {
+    screenfull.toggle()
+    if (screenfull.enabled) {
+      document.addEventListener(screenfull.raw.fullscreenchange, function () {
+        if (screenfull.isFullscreen) {
+          screenSizeElement.innerHTML = shrinkScreenIcon
+        } else {
+          screenSizeElement.innerHTML = expandScreenIcon
+        }
+      })
+    }
+  };
 
-	function onScreenSizeClick( event ) {
+  function onColorLayoutClick (event) {
+    if (darkLayout === false) {
+      document.body.className = 'yang'
+    } else {
+      document.body.className = 'yin'
+    }
+    darkLayout = !darkLayout
 
-		screenfull.toggle();
-   		if ( screenfull.enabled ) {
-			document.addEventListener( screenfull.raw.fullscreenchange, function () {
-				if ( screenfull.isFullscreen ) {
-					screenSizeElement.innerHTML = shrinkScreenIcon;
-				} else {
-					screenSizeElement.innerHTML = expandScreenIcon;	
-				}
-    		});
-    	}
-	};
+    saveState()
+  }
 
-	function onColorLayoutClick( event ) {
-		if ( darkLayout === false ) {
-			document.body.className = 'yang';
-		} else {
-			document.body.className = 'yin';
-		}
-		darkLayout = !darkLayout;
+  function onTargetClick (event) {
+    overlay.style.display = 'block'
+    wordCountBox.style.display = 'block'
+    wordCountElement.focus()
+  }
 
-		saveState();
-	}
+  function onAboutButtonClick (event) {
+    overlay.style.display = 'block'
+    descriptionModal.style.display = 'block'
+  }
 
-	function onTargetClick( event ) {
-		overlay.style.display = "block";
-		wordCountBox.style.display = "block";
-		wordCountElement.focus();
-	}
+  function onSaveClick (event) {
+    overlay.style.display = 'block'
+    saveModal.style.display = 'block'
+  }
 
-	function onAboutButtonClick( event ) {
-		overlay.style.display = "block";
-		descriptionModal.style.display = "block";
-	}
-	
-	function onSaveClick( event ) {
-		overlay.style.display = "block";
-		saveModal.style.display = "block";
-	}
+  function saveText (event) {
+    if (typeof saveFormat !== 'undefined' && saveFormat !== '') {
+      var blob = new Blob([textToWrite], {type: 'text/plain;charset=utf-8'})
+      /* remove tabs and line breaks from header */
+      var headerText = header.innerHTML.replace(/(\t|\n|\r)/gm, '')
+      if (headerText === '') {
+        headerText = 'ZenPen'
+      }
+      saveAs(blob, headerText + '.txt')
+    } else {
+      document.querySelector('.saveoverlay h1').style.color = '#FC1E1E'
+    }
+  }
 
-	function saveText( event ) {
+  /* Allows the user to press enter to tab from the title */
+  function onHeaderKeyPress (event) {
+    if (event.keyCode === 13) {
+      event.preventDefault()
+      article.focus()
+    }
+  }
 
-		if (typeof saveFormat != 'undefined' && saveFormat != '') {
-			var blob = new Blob([textToWrite], {type: "text/plain;charset=utf-8"});
-			/* remove tabs and line breaks from header */
-			var headerText = header.innerHTML.replace(/(\t|\n|\r)/gm,"");
-			if (headerText === "") {
-			    headerText = "ZenPen";
-			}
-			saveAs(blob, headerText + '.txt');
-		} else {
-			document.querySelector('.saveoverlay h1').style.color = '#FC1E1E';
-		}
-	}
-	
-	/* Allows the user to press enter to tab from the title */
-	function onHeaderKeyPress( event ) {
+  /* Allows the user to press enter to tab from the word count modal */
+  function onWordCountKeyUp (event) {
+    if (event.keyCode === 13) {
+      event.preventDefault()
 
-		if ( event.keyCode === 13 ) {
-			event.preventDefault();
-			article.focus();
-		}
-	}
+      setWordCount(parseInt(this.value))
 
-	/* Allows the user to press enter to tab from the word count modal */
-	function onWordCountKeyUp( event ) {
-		
-		if ( event.keyCode === 13 ) {
-			event.preventDefault();
-			
-			setWordCount( parseInt(this.value) );
+      removeOverlay()
 
-			removeOverlay();
+      article.focus()
+    }
+  }
 
-			article.focus();
-		}
-	}
+  function onWordCountChange (event) {
+    setWordCount(parseInt(this.value))
+  }
 
-	function onWordCountChange( event ) {
+  function setWordCount (count) {
+    // Set wordcount ui to active
+    if (count > 0) {
+      wordCountValue = count
+      wordCounter.className = 'word-counter active'
+      updateWordCount()
+    } else {
+      wordCountValue = 0
+      wordCounter.className = 'word-counter'
+    }
 
-		setWordCount( parseInt(this.value) );
-	}
+    saveState()
+  }
 
-	function setWordCount( count ) {
+  function onArticleKeyUp (event) {
+    if (wordCountValue > 0) {
+      updateWordCount()
+    }
+  }
 
-		// Set wordcount ui to active
-		if ( count > 0) {
+  function updateWordCount () {
+    var wordCount = ZenPen.editor.getWordCount()
+    var percentageComplete = wordCount / wordCountValue
+    wordCounterProgress.style.height = percentageComplete * 100 + '%'
 
-			wordCountValue = count;
-			wordCounter.className = "word-counter active";
-			updateWordCount();
+    if (percentageComplete >= 1) {
+      wordCounterProgress.className = 'progress complete'
+    } else {
+      wordCounterProgress.className = 'progress'
+    }
+  }
 
-		} else {
+  function selectFormat (event) {
+    if (document.querySelectorAll('span.activesave').length > 0) {
+      document.querySelector('span.activesave').className = ''
+    }
 
-			wordCountValue = 0;
-			wordCounter.className = "word-counter";
-		}
-		
-		saveState();
-	}
+    document.querySelector('.saveoverlay h1').style.cssText = ''
 
-	function onArticleKeyUp( event ) {
+    var targ
+    if (!event) event = window.event
+    if (event.target) targ = event.target
+    else if (event.srcElement) targ = event.srcElement
 
-		if ( wordCountValue > 0 ) {
-			updateWordCount();
-		}
-	}
+    // defeat Safari bug
+    if (targ.nodeType === Node.TEXT_NODE) {
+      targ = targ.parentNode
+    }
 
-	function updateWordCount() {
+    targ.className = 'activesave'
 
-		var wordCount = ZenPen.editor.getWordCount();
-		var percentageComplete = wordCount / wordCountValue;
-		wordCounterProgress.style.height = percentageComplete * 100 + '%';
+    saveFormat = targ.getAttribute('data-format')
 
-		if ( percentageComplete >= 1 ) {
-			wordCounterProgress.className = "progress complete";
-		} else {
-			wordCounterProgress.className = "progress";
-		}
-	}
+    var header = document.querySelector('header.header')
+    var headerText = header.innerHTML.replace(/(\r\n|\n|\r)/gm, '') + '\n'
 
-	function selectFormat( e ) {
-		
-		if ( document.querySelectorAll('span.activesave').length > 0 ) {
-			document.querySelector('span.activesave').className = '';
-		}
-		
-		document.querySelector('.saveoverlay h1').style.cssText = '';
-		
-		var targ;
-		if (!e) var e = window.event;
-		if (e.target) targ = e.target;
-		else if (e.srcElement) targ = e.srcElement;
-		
-		// defeat Safari bug
-		if (targ.nodeType === Node.TEXT_NODE) {
-			targ = targ.parentNode;
-		}
-			
-		targ.className ='activesave';
-		
-		saveFormat = targ.getAttribute('data-format');
-		
-		var header = document.querySelector('header.header');
-		var headerText = header.innerHTML.replace(/(\r\n|\n|\r)/gm,"") + "\n";
-		
-		var body = document.querySelector('article.content');
-		var bodyText = body.innerHTML;
-			
-		textToWrite = formatText(saveFormat,headerText,bodyText);
-		
-		var textArea = document.querySelector('.hiddentextbox');
-		textArea.value = textToWrite;
-		textArea.focus();
-		textArea.select();
+    var body = document.querySelector('article.content')
+    var bodyText = body.innerHTML
 
-	}
+    textToWrite = formatText(saveFormat, headerText, bodyText)
 
-	function formatText( type, header, body ) {
-		
-		var text;
-		switch( type ) {
+    var textArea = document.querySelector('.hiddentextbox')
+    textArea.value = textToWrite
+    textArea.focus()
+    textArea.select()
+  }
 
-			case 'html':
-				header = "<h1>" + header + "</h1>";
-				text = header + body;
-				text = text.replace(/\t/g, '');
-			break;
+  function formatText (type, header, body) {
+    var text
+    switch (type) {
+    case 'html':
+      header = '<h1>' + header + '</h1>'
+      text = header + body
+      text = text.replace(/\t/g, '')
+      break
 
-			case 'markdown':
-				header = header.replace(/\t/g, '');
-				header = header.replace(/\n$/, '');
-				header = "#" + header + "#";
-			
-				text = body.replace(/\t/g, '');
-			
-				text = text.replace(/<b>|<\/b>/g,"**")
-					.replace(/\r\n+|\r+|\n+|\t+/ig,"")
-					.replace(/<i>|<\/i>/g,"_")
-					.replace(/<blockquote>/g,"> ")
-					.replace(/<\/blockquote>/g,"")
-					.replace(/<p>|<\/p>/gi,"\n")
-					.replace(/<br>/g,"\n");
-				
-				var links = text.match(/<a href="(.+)">(.+)<\/a>/gi);
-				
-                                if (links !== null) {
-                                        for ( var i = 0; i<links.length; i++ ) {
-                                                var tmpparent = document.createElement('div');
-                                                tmpparent.innerHTML = links[i];
-                                                
-                                                var tmp = tmpparent.firstChild;
-                                                
-                                                var href = tmp.getAttribute('href');
-                                                var linktext = tmp.textContent || tmp.innerText || "";
-                                                
-                                                text = text.replace(links[i],'['+linktext+']('+href+')');
-                                        }
-                                }
-				
-				text = header +"\n\n"+ text;
-			break;
+    case 'markdown':
+      header = header.replace(/\t/g, '')
+      header = header.replace(/\n$/, '')
+      header = '#' + header + '#'
 
-			case 'plain':
-				header = header.replace(/\t/g, '');
-			
-				var tmp = document.createElement('div');
-				tmp.innerHTML = body;
-				text = tmp.textContent || tmp.innerText || "";
-				
-				text = text.replace(/\t/g, '')
-					.replace(/\n{3}/g,"\n")
-					.replace(/\n/,""); //replace the opening line break
-				
-				text = header + text;
-			break;
-			default:
-			break;
-		}
-		
-		return text;
-	}
+      text = body.replace(/\t/g, '')
 
-	function onOverlayClick( event ) {
+      text = text.replace(/<b>|<\/b>/g, '**')
+        .replace(/\r\n+|\r+|\n+|\t+/ig, '')
+        .replace(/<i>|<\/i>/g, '_')
+        .replace(/<blockquote>/g, '> ')
+        .replace(/<\/blockquote>/g, '')
+        .replace(/<p>|<\/p>/gi, '\n')
+        .replace(/<br>/g, '\n')
 
-		if ( event.target.className === "overlay" ) {
-			removeOverlay();
-		}
-	}
+      var links = text.match(/<a href="(.+)">(.+)<\/a>/gi)
 
-	function removeOverlay() {
-		
-		overlay.style.display = "none";
-		wordCountBox.style.display = "none";
-		descriptionModal.style.display = "none";
-		saveModal.style.display = "none";
-		
-		if ( document.querySelectorAll('span.activesave' ).length > 0) {
-			document.querySelector('span.activesave').className = '';
-		}
+      if (links !== null) {
+        for (var i = 0; i < links.length; i++) {
+          var tmpparent = document.createElement('div')
+          tmpparent.innerHTML = links[i]
 
-		saveFormat='';
-	}
+          var tmp = tmpparent.firstChild
 
-	return {
-		init: init
-	}
+          var href = tmp.getAttribute('href')
+          var linktext = tmp.textContent || tmp.innerText || ''
 
-})();
+          text = text.replace(links[i], '[' + linktext + '](' + href + ')')
+        }
+      }
+
+      text = header + '\n\n' + text
+      break
+
+    case 'plain':
+      header = header.replace(/\t/g, '')
+
+      var tmpDiv = document.createElement('div')
+      tmpDiv.innerHTML = body
+      text = tmpDiv.textContent || tmpDiv.innerText || ''
+
+      text = text
+        .replace(/\t/g, '')
+        .replace(/\n{3}/g, '\n')
+        .replace(/\n/, '') // replace the opening line break
+
+      text = header + text
+      break
+    default:
+      break
+    }
+
+    return text
+  }
+
+  function onOverlayClick (event) {
+    if (event.target.className === 'overlay') {
+      removeOverlay()
+    }
+  }
+
+  function removeOverlay () {
+    overlay.style.display = 'none'
+    wordCountBox.style.display = 'none'
+    descriptionModal.style.display = 'none'
+    saveModal.style.display = 'none'
+
+    if (document.querySelectorAll('span.activesave').length > 0) {
+      document.querySelector('span.activesave').className = ''
+    }
+
+    saveFormat = ''
+  }
+
+  return {
+    init: init
+  }
+})()
