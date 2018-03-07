@@ -260,7 +260,7 @@ ZenPen.ui = (function() {
 		else if (e.srcElement) targ = e.srcElement;
 		
 		// defeat Safari bug
-		if (targ.nodeType == 3) {
+		if (targ.nodeType === Node.TEXT_NODE) {
 			targ = targ.parentNode;
 		}
 			

@@ -15,9 +15,9 @@ ZenPen.util = (function() {
 		var length = el.childNodes.length;
 		for(var i = 0; i < length; i++) {
 		    var node = el.childNodes[i];
-		    if(node.nodeType != 8) {
+		    if(node.nodeType !== Node.COMMENT_NODE) {
 
-			if ( node.nodeType != 1 ) {
+			if ( node.nodeType !== Node.ELEMENT_NODE) {
 			    // Strip white space.
 			    ret += node.nodeValue;
 			} else {
